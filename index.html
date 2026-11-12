@@ -3,9 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>fufa.com — Instant Anonymous Chat</title>
+    <title>fufa.com — Anonymous Chat</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- PeerJS CDN -->
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -34,7 +36,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
-        /* Custom scrollbar */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: #0f0c1b; }
         ::-webkit-scrollbar-thumb { background: #2a224a; border-radius: 3px; }
@@ -54,12 +55,12 @@
             </div>
             <div>
                 <h1 class="font-bold text-xl tracking-tight bg-gradient-to-r from-white via-fufa-100 to-fufa-500 bg-clip-text text-transparent">fufa<span class="text-fufa-500">.com</span></h1>
-                <p class="text-[10px] text-gray-400 font-medium tracking-wider uppercase">Zero IDs • 100% Anonymous</p>
+                <p class="text-[10px] text-gray-400 font-medium tracking-wider uppercase">P2P Serverless • 100% Anonymous</p>
             </div>
         </div>
 
         <div id="header-user-info" class="hidden items-center space-x-3 bg-fufa-border/50 px-3.5 py-1.5 rounded-full border border-fufa-border">
-            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span id="connection-status-dot" class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
             <span id="current-username-display" class="text-xs font-semibold text-gray-200"></span>
             <button onclick="leaveRoom()" class="text-gray-400 hover:text-red-400 transition ml-2 text-xs font-medium flex items-center gap-1">
                 <i class="fa-solid fa-arrow-right-from-bracket"></i> Leave
@@ -70,27 +71,26 @@
     <!-- MAIN APP CONTAINER -->
     <main class="flex-1 flex flex-col relative overflow-hidden">
 
-        <!-- VIEW 1: LANDING & ROOM SELECTION -->
+        <!-- VIEW 1: LANDING & ROOM SETUP -->
         <section id="landing-view" class="flex-1 flex flex-col items-center justify-center px-4 py-12 relative">
-            <!-- Background Glow Elements -->
             <div class="absolute w-96 h-96 bg-fufa-600/10 rounded-full blur-3xl -top-20 -left-20 pointer-events-none"></div>
             <div class="absolute w-96 h-96 bg-pink-600/10 rounded-full blur-3xl -bottom-20 -right-20 pointer-events-none"></div>
 
-            <div class="max-w-xl w-full mx-auto text-center z-10 space-y-8">
+            <div class="max-w-md w-full mx-auto text-center z-10 space-y-6">
                 <div class="space-y-3">
                     <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-fufa-500/10 text-fufa-400 border border-fufa-500/20">
-                        <i class="fa-solid fa-shield-halved"></i> No Registration • No Cookies • Total Privacy
+                        <i class="fa-solid fa-bolt"></i> Browser-to-Browser WebRTC Mesh
                     </span>
-                    <h2 class="text-4xl sm:text-5xl font-extrabold tracking-tight text-white">
-                        Chat instantly with <span class="bg-gradient-to-r from-fufa-500 to-pink-500 bg-clip-text text-transparent">anyone</span>, anywhere.
+                    <h2 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
+                        Direct P2P <span class="bg-gradient-to-r from-fufa-500 to-pink-500 bg-clip-text text-transparent">Encrypted</span> Chat
                     </h2>
-                    <p class="text-gray-400 text-sm sm:text-base max-w-md mx-auto">
-                        Jump straight into public lounges or secret rooms. Pick a handle and start talking instantly.
+                    <p class="text-gray-400 text-xs sm:text-sm max-w-sm mx-auto">
+                        Create a private room to host peers, or join an existing room code instantly without any ID or server database.
                     </p>
                 </div>
 
-                <!-- Join Form Card -->
-                <div class="bg-fufa-card border border-fufa-border p-6 sm:p-8 rounded-2xl shadow-2xl text-left space-y-5">
+                <!-- Form Card -->
+                <div class="bg-fufa-card border border-fufa-border p-6 rounded-2xl shadow-2xl text-left space-y-4">
                     <div>
                         <label class="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">Your Anonymous Handle</label>
                         <div class="relative">
@@ -102,156 +102,101 @@
                         </div>
                     </div>
 
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">Select a Chat Lounge</label>
-                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5" id="room-selection-grid">
-                            <button type="button" onclick="selectRoom('General')" data-room="General" class="room-btn p-3 rounded-xl border border-fufa-border bg-fufa-dark hover:border-fufa-500 transition text-left flex items-center space-x-3 group">
-                                <span class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center group-hover:bg-blue-500 group-hover:text-white transition"><i class="fa-solid fa-globe"></i></span>
-                                <div>
-                                    <div class="text-xs font-bold text-gray-200">General</div>
-                                    <div class="text-[10px] text-gray-400">Open lounge</div>
-                                </div>
-                            </button>
-                            <button type="button" onclick="selectRoom('Tech & Code')" data-room="Tech & Code" class="room-btn p-3 rounded-xl border border-fufa-border bg-fufa-dark hover:border-fufa-500 transition text-left flex items-center space-x-3 group">
-                                <span class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center group-hover:bg-emerald-500 group-hover:text-white transition"><i class="fa-solid fa-code"></i></span>
-                                <div>
-                                    <div class="text-xs font-bold text-gray-200">Tech & Code</div>
-                                    <div class="text-[10px] text-gray-400">Devs & Geeks</div>
-                                </div>
-                            </button>
-                            <button type="button" onclick="selectRoom('Gaming')" data-room="Gaming" class="room-btn p-3 rounded-xl border border-fufa-border bg-fufa-dark hover:border-fufa-500 transition text-left flex items-center space-x-3 group">
-                                <span class="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center group-hover:bg-purple-500 group-hover:text-white transition"><i class="fa-solid fa-gamepad"></i></span>
-                                <div>
-                                    <div class="text-xs font-bold text-gray-200">Gaming</div>
-                                    <div class="text-[10px] text-gray-400">Play & talk</div>
-                                </div>
-                            </button>
-                            <button type="button" onclick="selectRoom('Chill & Music')" data-room="Chill & Music" class="room-btn p-3 rounded-xl border border-fufa-border bg-fufa-dark hover:border-fufa-500 transition text-left flex items-center space-x-3 group">
-                                <span class="w-8 h-8 rounded-lg bg-pink-500/10 text-pink-400 flex items-center justify-center group-hover:bg-pink-500 group-hover:text-white transition"><i class="fa-solid fa-music"></i></span>
-                                <div>
-                                    <div class="text-xs font-bold text-gray-200">Chill</div>
-                                    <div class="text-[10px] text-gray-400">Vibes & relaxed</div>
-                                </div>
-                            </button>
-                            <button type="button" onclick="selectRoom('Late Night')" data-room="Late Night" class="room-btn p-3 rounded-xl border border-fufa-border bg-fufa-dark hover:border-fufa-500 transition text-left flex items-center space-x-3 group">
-                                <span class="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center group-hover:bg-amber-500 group-hover:text-white transition"><i class="fa-solid fa-moon"></i></span>
-                                <div>
-                                    <div class="text-xs font-bold text-gray-200">Late Night</div>
-                                    <div class="text-[10px] text-gray-400">Deep thoughts</div>
-                                </div>
-                            </button>
-                            <button type="button" onclick="selectRoom('Custom')" data-room="Custom" class="room-btn p-3 rounded-xl border border-fufa-border bg-fufa-dark hover:border-fufa-500 transition text-left flex items-center space-x-3 group">
-                                <span class="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center group-hover:bg-indigo-500 group-hover:text-white transition"><i class="fa-solid fa-key"></i></span>
-                                <div>
-                                    <div class="text-xs font-bold text-gray-200">Secret Room</div>
-                                    <div class="text-[10px] text-gray-400">Use custom code</div>
-                                </div>
-                            </button>
+                    <!-- Action Tabs: Host or Join -->
+                    <div class="grid grid-cols-2 gap-2 pt-2">
+                        <button type="button" onclick="setMode('host')" id="tab-host" class="p-3 rounded-xl border border-fufa-500 bg-fufa-dark text-center transition font-semibold text-xs text-white">
+                            <i class="fa-solid fa-house-laptop block text-base text-fufa-500 mb-1"></i> Create Room
+                        </button>
+                        <button type="button" onclick="setMode('join')" id="tab-join" class="p-3 rounded-xl border border-fufa-border bg-fufa-dark/60 text-center transition font-semibold text-xs text-gray-400 hover:text-white">
+                            <i class="fa-solid fa-right-to-bracket block text-base mb-1"></i> Join Room
+                        </button>
+                    </div>
+
+                    <!-- Host Section -->
+                    <div id="host-section" class="space-y-3 pt-2">
+                        <button onclick="startHostingRoom()" class="w-full py-3.5 bg-gradient-to-r from-fufa-600 to-pink-600 hover:from-fufa-500 hover:to-pink-500 text-white font-semibold rounded-xl shadow-lg shadow-fufa-600/30 transition flex items-center justify-center space-x-2">
+                            <span>Initialize Room Host</span>
+                            <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                    </div>
+
+                    <!-- Join Section -->
+                    <div id="join-section" class="space-y-3 pt-2 hidden">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">Room Code (e.g. FUFA-4829)</label>
+                            <input type="text" id="room-code-input" placeholder="FUFA-XXXX" uppercase
+                                class="w-full bg-fufa-dark border border-fufa-border rounded-xl px-4 py-3 text-sm uppercase text-white placeholder-gray-500 focus:outline-none focus:border-fufa-500 transition">
                         </div>
+                        <button onclick="joinExistingRoom()" class="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold rounded-xl shadow-lg shadow-emerald-600/30 transition flex items-center justify-center space-x-2">
+                            <span>Connect to Room</span>
+                            <i class="fa-solid fa-plug"></i>
+                        </button>
                     </div>
-
-                    <!-- Custom Room Code Input (Hidden by default) -->
-                    <div id="custom-room-container" class="hidden">
-                        <label class="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">Enter Secret Room Code</label>
-                        <input type="text" id="custom-room-code-input" placeholder="e.g. secret-base-99" 
-                            class="w-full bg-fufa-dark border border-fufa-border rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-fufa-500 transition">
-                    </div>
-
-                    <button onclick="joinChat()" class="w-full py-3.5 bg-gradient-to-r from-fufa-600 to-pink-600 hover:from-fufa-500 hover:to-pink-500 text-white font-semibold rounded-xl shadow-lg shadow-fufa-600/30 transition duration-200 flex items-center justify-center space-x-2">
-                        <span>Enter Chat Room</span>
-                        <i class="fa-solid fa-arrow-right"></i>
-                    </button>
                 </div>
-
-                <!-- Footer disclaimer -->
-                <p class="text-xs text-gray-500">
-                    By entering, you agree to keep conversations civil and respectful. Messages disappear on reload.
-                </p>
             </div>
         </section>
 
-        <!-- VIEW 2: ACTIVE CHAT ROOM -->
+        <!-- VIEW 2: ACTIVE P2P CHAT ROOM -->
         <section id="chat-view" class="hidden flex-1 flex flex-col md:flex-row h-full overflow-hidden">
             
-            <!-- Sidebar: Active Users & Rooms (Desktop) -->
+            <!-- Sidebar: Room Info & Peers -->
             <aside class="hidden md:flex flex-col w-72 border-r border-fufa-border bg-fufa-card/40 p-4 space-y-6">
-                <!-- Room Badge -->
-                <div class="bg-fufa-dark/80 border border-fufa-border rounded-2xl p-4 space-y-2">
+                <!-- Room Code Card -->
+                <div class="bg-fufa-dark/80 border border-fufa-border rounded-2xl p-4 space-y-3">
                     <div class="flex items-center justify-between">
-                        <span class="text-[10px] uppercase font-bold tracking-wider text-gray-400">Current Room</span>
+                        <span class="text-[10px] uppercase font-bold tracking-wider text-gray-400">P2P Room Code</span>
                         <span class="inline-flex items-center gap-1 text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full font-medium">
-                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Live
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> P2P Live
                         </span>
                     </div>
-                    <div id="sidebar-room-name" class="font-bold text-base text-white flex items-center gap-2">
-                        <i class="fa-solid fa-hashtag text-fufa-500"></i> General
+                    <div class="flex items-center justify-between bg-fufa-card border border-fufa-border px-3 py-2 rounded-xl">
+                        <span id="sidebar-room-code" class="font-mono font-bold text-sm text-fufa-400 tracking-wider">FUFA-XXXX</span>
+                        <button onclick="copyRoomCode()" class="text-xs text-gray-400 hover:text-white px-2 py-1 bg-fufa-border/60 rounded-lg transition" title="Copy code">
+                            <i class="fa-regular fa-copy"></i>
+                        </button>
                     </div>
-                    <button onclick="openSwitchRoomModal()" class="w-full mt-2 py-1.5 bg-fufa-border/50 hover:bg-fufa-border text-xs text-gray-300 font-medium rounded-xl transition">
-                        Switch Room
-                    </button>
+                    <p class="text-[11px] text-gray-400">Share this code with friends so they can connect directly to your browser.</p>
                 </div>
 
-                <!-- Safety Banner -->
-                <div class="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-3 text-xs text-amber-300 space-y-1">
-                    <div class="font-semibold flex items-center gap-1.5">
-                        <i class="fa-solid fa-triangle-exclamation"></i> Safety Notice
-                    </div>
-                    <p class="text-[11px] text-amber-200/80 leading-relaxed">
-                        Never share passwords, phone numbers, or sensitive personal data. Keep it clean!
-                    </p>
-                </div>
-
-                <!-- Active Online Users List -->
+                <!-- Active Connected Peers List -->
                 <div class="flex-1 flex flex-col min-h-0 space-y-2">
                     <div class="flex items-center justify-between px-1">
-                        <span class="text-[10px] uppercase font-bold tracking-wider text-gray-400">Online Peers</span>
-                        <span id="peer-count-badge" class="text-[10px] bg-fufa-border text-gray-300 px-2 py-0.5 rounded-full font-bold">4</span>
+                        <span class="text-[10px] uppercase font-bold tracking-wider text-gray-400">Connected Peers</span>
+                        <span id="peer-count-badge" class="text-[10px] bg-fufa-border text-gray-300 px-2 py-0.5 rounded-full font-bold">1</span>
                     </div>
                     <div id="online-users-list" class="flex-1 overflow-y-auto space-y-1.5 pr-1">
-                        <!-- Populated by JS -->
+                        <!-- Populated dynamically -->
                     </div>
                 </div>
 
-                <!-- Quick Action -->
-                <button onclick="clearChatScreen()" class="w-full py-2 bg-fufa-dark hover:bg-fufa-border/60 border border-fufa-border text-xs text-gray-400 hover:text-white rounded-xl transition flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-trash-can"></i> Clear Local History
+                <button onclick="leaveRoom()" class="w-full py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-xs text-red-400 rounded-xl transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-arrow-right-from-bracket"></i> Disconnect & Leave
                 </button>
             </aside>
 
             <!-- Main Chat Area -->
             <div class="flex-1 flex flex-col h-full bg-fufa-dark relative">
                 
-                <!-- Mobile Top Bar Info -->
+                <!-- Mobile Top Bar -->
                 <div class="md:hidden flex items-center justify-between px-4 py-2.5 bg-fufa-card border-b border-fufa-border">
                     <div class="flex items-center space-x-2">
-                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                        <span id="mobile-room-title" class="font-bold text-sm text-white"># General</span>
+                        <span class="font-mono font-bold text-sm text-fufa-400" id="mobile-room-code">FUFA-XXXX</span>
                     </div>
-                    <button onclick="openSwitchRoomModal()" class="px-3 py-1 bg-fufa-border/50 text-xs rounded-lg text-gray-200">
-                        Switch
+                    <button onclick="copyRoomCode()" class="px-3 py-1 bg-fufa-border/50 text-xs rounded-lg text-gray-200">
+                        Copy Code
                     </button>
                 </div>
 
-                <!-- Messages Scroll Area -->
+                <!-- Messages Container -->
                 <div id="chat-messages-container" class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
-                    <!-- Messages will be injected here -->
-                </div>
-
-                <!-- Typing Indicator Bar -->
-                <div id="typing-indicator" class="hidden px-6 py-1 text-xs text-gray-400 italic flex items-center space-x-2 bg-fufa-dark">
-                    <span class="flex space-x-1">
-                        <span class="w-1.5 h-1.5 bg-fufa-500 rounded-full animate-bounce"></span>
-                        <span class="w-1.5 h-1.5 bg-fufa-500 rounded-full animate-bounce [animation-delay:0.2s]"></span>
-                        <span class="w-1.5 h-1.5 bg-fufa-500 rounded-full animate-bounce [animation-delay:0.4s]"></span>
-                    </span>
-                    <span id="typing-text">Someone is typing...</span>
+                    <!-- Messages go here -->
                 </div>
 
                 <!-- Chat Input Form -->
                 <div class="p-3 sm:p-4 bg-fufa-card/80 backdrop-blur-md border-t border-fufa-border">
                     <form id="chat-form" onsubmit="handleSendMessage(event)" class="flex items-center gap-2 relative">
                         
-                        <!-- Emoji Picker Popover -->
+                        <!-- Emoji Picker -->
                         <div id="emoji-picker" class="hidden absolute bottom-16 left-0 bg-fufa-card border border-fufa-border p-3 rounded-2xl shadow-2xl grid grid-cols-6 gap-2 z-30">
                             <button type="button" onclick="insertEmoji('😊')" class="text-xl hover:scale-125 transition">😊</button>
                             <button type="button" onclick="insertEmoji('😂')" class="text-xl hover:scale-125 transition">😂</button>
@@ -259,23 +204,13 @@
                             <button type="button" onclick="insertEmoji('🚀')" class="text-xl hover:scale-125 transition">🚀</button>
                             <button type="button" onclick="insertEmoji('👍')" class="text-xl hover:scale-125 transition">👍</button>
                             <button type="button" onclick="insertEmoji('🎉')" class="text-xl hover:scale-125 transition">🎉</button>
-                            <button type="button" onclick="insertEmoji('💡')" class="text-xl hover:scale-125 transition">💡</button>
-                            <button type="button" onclick="insertEmoji('👻')" class="text-xl hover:scale-125 transition">👻</button>
-                            <button type="button" onclick="insertEmoji('💯')" class="text-xl hover:scale-125 transition">💯</button>
-                            <button type="button" onclick="insertEmoji('👾')" class="text-xl hover:scale-125 transition">👾</button>
-                            <button type="button" onclick="insertEmoji('🍕')" class="text-xl hover:scale-125 transition">🍕</button>
-                            <button type="button" onclick="insertEmoji('⚡')" class="text-xl hover:scale-125 transition">⚡</button>
                         </div>
 
                         <button type="button" onclick="toggleEmojiPicker()" class="p-3 text-gray-400 hover:text-fufa-500 transition rounded-xl bg-fufa-dark border border-fufa-border flex items-center justify-center">
                             <i class="fa-regular fa-face-smile text-lg"></i>
                         </button>
 
-                        <button type="button" onclick="triggerMediaMock()" class="p-3 text-gray-400 hover:text-fufa-500 transition rounded-xl bg-fufa-dark border border-fufa-border hidden sm:flex items-center justify-center" title="Share mock image">
-                            <i class="fa-regular fa-image text-lg"></i>
-                        </button>
-
-                        <input type="text" id="message-input" autocomplete="off" placeholder="Type an anonymous message..." 
+                        <input type="text" id="message-input" autocomplete="off" placeholder="Type a peer-to-peer message..." 
                             class="flex-1 bg-fufa-dark border border-fufa-border rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-fufa-500 transition">
 
                         <button type="submit" class="px-5 py-3 bg-gradient-to-r from-fufa-600 to-pink-600 hover:from-fufa-500 hover:to-pink-500 text-white font-semibold rounded-xl shadow-lg shadow-fufa-600/30 transition flex items-center justify-center">
@@ -288,57 +223,22 @@
 
     </main>
 
-    <!-- SWITCH ROOM MODAL -->
-    <div id="switch-room-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-fufa-card border border-fufa-border max-w-md w-full p-6 rounded-2xl shadow-2xl space-y-5">
-            <div class="flex items-center justify-between">
-                <h3 class="font-bold text-lg text-white">Switch Chat Room</h3>
-                <button onclick="closeSwitchRoomModal()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-            <p class="text-xs text-gray-400">Choose another public lounge or join a custom secret room code.</p>
-            
-            <div class="grid grid-cols-2 gap-2.5">
-                <button onclick="switchActiveRoom('General')" class="p-3 rounded-xl border border-fufa-border bg-fufa-dark hover:border-fufa-500 transition text-left text-xs font-semibold text-gray-200">
-                    <i class="fa-solid fa-globe text-blue-400 mr-2"></i> General
-                </button>
-                <button onclick="switchActiveRoom('Tech & Code')" class="p-3 rounded-xl border border-fufa-border bg-fufa-dark hover:border-fufa-500 transition text-left text-xs font-semibold text-gray-200">
-                    <i class="fa-solid fa-code text-emerald-400 mr-2"></i> Tech & Code
-                </button>
-                <button onclick="switchActiveRoom('Gaming')" class="p-3 rounded-xl border border-fufa-border bg-fufa-dark hover:border-fufa-500 transition text-left text-xs font-semibold text-gray-200">
-                    <i class="fa-solid fa-gamepad text-purple-400 mr-2"></i> Gaming
-                </button>
-                <button onclick="switchActiveRoom('Chill & Music')" class="p-3 rounded-xl border border-fufa-border bg-fufa-dark hover:border-fufa-500 transition text-left text-xs font-semibold text-gray-200">
-                    <i class="fa-solid fa-music text-pink-400 mr-2"></i> Chill & Music
-                </button>
-            </div>
-
-            <div class="pt-2 border-t border-fufa-border space-y-2">
-                <label class="block text-xs font-semibold text-gray-300">Join Custom Room Code</label>
-                <div class="flex gap-2">
-                    <input type="text" id="modal-custom-room" placeholder="Secret code..." class="flex-1 bg-fufa-dark border border-fufa-border rounded-xl px-3 py-2 text-xs text-white">
-                    <button onclick="switchCustomRoomModal()" class="px-4 py-2 bg-fufa-500 hover:bg-fufa-600 text-xs font-semibold text-white rounded-xl transition">Join</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- JAVASCRIPT APPLICATION LOGIC -->
+    <!-- JAVASCRIPT P2P APPLICATION LOGIC -->
     <script>
-        // State Variables
+        // State variables
         let currentUser = '';
-        let currentRoom = 'General';
+        let currentRoomCode = '';
+        let isHost = false;
+        let peer = null;          // PeerJS instance
+        let connections = [];     // Array of active DataConnections (if host) or single connection (if guest)
+        let peerUsernames = {};   // Map peerId -> username
         let messages = [];
-        let activePeers = [];
-        let simulationInterval = null;
-        let typingTimeout = null;
 
-        // Random generator pools for anonymous handles
         const adjectives = ['Cyber', 'Silent', 'Cosmic', 'Neon', 'Hidden', 'Phantom', 'Crypto', 'Astral', 'Ghost', 'Sonic', 'Matrix', 'Vortex'];
         const nouns = ['Ninja', 'Viper', 'Phoenix', 'Nomad', 'Falcon', 'Spectre', 'Rogue', 'Titan', 'Drifter', 'Wizard', 'Shadow', 'Pioneer'];
 
         window.addEventListener('DOMContentLoaded', () => {
             generateRandomName();
-            setupRoomSelectionUI();
         });
 
         function generateRandomName() {
@@ -348,23 +248,22 @@
             document.getElementById('username-input').value = `${adj}${noun}${num}`;
         }
 
-        // Room selection UI toggle
-        let selectedRoomType = 'General';
-        function selectRoom(roomName) {
-            selectedRoomType = roomName;
-            document.querySelectorAll('.room-btn').forEach(btn => {
-                btn.classList.remove('border-fufa-500', 'bg-fufa-card');
-            });
-            const clickedBtn = document.querySelector(`[data-room="${roomName}"]`);
-            if (clickedBtn) {
-                clickedBtn.classList.add('border-fufa-500', 'bg-fufa-card');
-            }
+        function setMode(mode) {
+            const hostBtn = document.getElementById('tab-host');
+            const joinBtn = document.getElementById('tab-join');
+            const hostSec = document.getElementById('host-section');
+            const joinSec = document.getElementById('join-section');
 
-            const customContainer = document.getElementById('custom-room-container');
-            if (roomName === 'Custom') {
-                customContainer.classList.remove('hidden');
+            if (mode === 'host') {
+                hostBtn.className = 'p-3 rounded-xl border border-fufa-500 bg-fufa-dark text-center transition font-semibold text-xs text-white';
+                joinBtn.className = 'p-3 rounded-xl border border-fufa-border bg-fufa-dark/60 text-center transition font-semibold text-xs text-gray-400 hover:text-white';
+                hostSec.classList.remove('hidden');
+                joinSec.classList.add('hidden');
             } else {
-                customContainer.classList.add('hidden');
+                joinBtn.className = 'p-3 rounded-xl border border-emerald-500 bg-fufa-dark text-center transition font-semibold text-xs text-white';
+                hostBtn.className = 'p-3 rounded-xl border border-fufa-border bg-fufa-dark/60 text-center transition font-semibold text-xs text-gray-400 hover:text-white';
+                joinSec.classList.remove('hidden');
+                hostSec.classList.add('hidden');
             }
         }
 
@@ -377,90 +276,245 @@
             toast.innerHTML = `<div class="flex items-center gap-2"><i class="fa-solid fa-circle-info text-fufa-500"></i><span>${message}</span></div>`;
             container.appendChild(toast);
 
-            setTimeout(() => {
-                toast.classList.remove('translate-y-2', 'opacity-0');
-            }, 10);
-
+            setTimeout(() => { toast.classList.remove('translate-y-2', 'opacity-0'); }, 10);
             setTimeout(() => {
                 toast.classList.add('translate-y-2', 'opacity-0');
                 setTimeout(() => toast.remove(), 300);
-            }, 3000);
+            }, 3500);
         }
 
-        // Join Chat Handler
-        function joinChat() {
+        // START HOSTING ROOM
+        function startHostingRoom() {
             const nameInput = document.getElementById('username-input').value.trim();
             if (!nameInput) {
-                showToast('Please enter or generate an anonymous handle!', 'error');
+                showToast('Please enter your anonymous handle!', 'error');
                 return;
             }
             currentUser = nameInput;
+            isHost = true;
+            
+            // Generate a 4-digit random suffix for room code
+            const randomCode = Math.floor(1000 + Math.random() * 9000);
+            currentRoomCode = `FUFA-${randomCode}`;
 
-            if (selectedRoomType === 'Custom') {
-                const customCode = document.getElementById('custom-room-code-input').value.trim();
-                if (!customCode) {
-                    showToast('Please enter a valid custom room code!', 'error');
-                    return;
-                }
-                currentRoom = `Custom: ${customCode}`;
-            } else {
-                currentRoom = selectedRoomType;
+            initPeerJS(currentRoomCode);
+        }
+
+        // JOIN EXISTING ROOM
+        function joinExistingRoom() {
+            const nameInput = document.getElementById('username-input').value.trim();
+            const codeInput = document.getElementById('room-code-input').value.trim().toUpperCase();
+
+            if (!nameInput) {
+                showToast('Please enter your anonymous handle!', 'error');
+                return;
+            }
+            if (!codeInput || !codeInput.startsWith('FUFA-')) {
+                showToast('Please enter a valid room code (e.g. FUFA-1234)', 'error');
+                return;
             }
 
-            // Transition UI
+            currentUser = nameInput;
+            isHost = false;
+            currentRoomCode = codeInput;
+
+            // Generate temporary unique guest peer ID
+            const guestPeerId = `fufa-guest-${Math.random().toString(36).substring(2, 8)}`;
+            initPeerJS(guestPeerId, true);
+        }
+
+        // INITIALIZE PEERJS CONNECTION
+        function initPeerJS(peerIdToUse, isJoining = false) {
+            showToast('Connecting to PeerJS P2P network...');
+            
+            // Clean up previous peer if any
+            if (peer) {
+                try { peer.destroy(); } catch(e){}
+            }
+
+            peer = new Peer(peerIdToUse, {
+                debug: 1
+            });
+
+            peer.on('open', (id) => {
+                document.getElementById('connection-status-dot').className = 'w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse';
+                
+                if (isJoining) {
+                    // Connect to the host room code
+                    connectToHost(currentRoomCode);
+                } else {
+                    // Successfully hosting
+                    enterChatUI();
+                    showToast(`Room hosted successfully! Code: ${currentRoomCode}`);
+                }
+            });
+
+            peer.on('connection', (conn) => {
+                setupConnectionHandlers(conn);
+            });
+
+            peer.on('error', (err) => {
+                console.error(err);
+                document.getElementById('connection-status-dot').className = 'w-2.5 h-2.5 rounded-full bg-red-500';
+                if (err.type === 'unavailable-id') {
+                    showToast('Room code already taken or host is offline. Try another.', 'error');
+                } else {
+                    showToast(`Connection error: ${err.type}`, 'error');
+                }
+            });
+        }
+
+        // IF JOINING: Connect to Host Peer ID
+        function connectToHost(hostId) {
+            showToast(`Connecting to room ${hostId}...`);
+            const conn = peer.connect(hostId, {
+                reliable: true
+            });
+
+            conn.on('open', () => {
+                setupConnectionHandlers(conn);
+                enterChatUI();
+                showToast('Connected to P2P room successfully!');
+                
+                // Send our initial handshake with our username
+                conn.send({
+                    type: 'HANDSHAKE',
+                    username: currentUser
+                });
+            });
+
+            conn.on('error', (err) => {
+                showToast('Failed to connect to host room. Check code.', 'error');
+            });
+        }
+
+        // SETUP DATA CHANNEL HANDLERS FOR A CONNECTION
+        function setupConnectionHandlers(conn) {
+            if (!connections.includes(conn)) {
+                connections.push(conn);
+            }
+
+            conn.on('data', (data) => {
+                handleIncomingData(data, conn);
+            });
+
+            conn.on('close', () => {
+                connections = connections.filter(c => c !== conn);
+                const peerName = peerUsernames[conn.peer] || 'A peer';
+                delete peerUsernames[conn.peer];
+                
+                addSystemMessage(`${peerName} left the room.`);
+                renderPeers();
+
+                // If we are host, broadcast updated peer list
+                if (isHost) {
+                    broadcastPeerList();
+                }
+            });
+        }
+
+        // HANDLE INCOMING MESSAGES / PACKETS OVER WEBRTC
+        function handleIncomingData(data, conn) {
+            if (data.type === 'HANDSHAKE') {
+                peerUsernames[conn.peer] = data.username;
+                addSystemMessage(`${data.username} joined the room.`);
+                renderPeers();
+
+                // If Host, broadcast this new peer list to everyone
+                if (isHost) {
+                    broadcastPeerList();
+                }
+            } 
+            else if (data.type === 'CHAT_MESSAGE') {
+                messages.push({
+                    user: data.username,
+                    text: data.text,
+                    time: data.time
+                });
+                renderMessages();
+
+                // If we are host, relay message to all other connected peers (mesh broadcast)
+                if (isHost) {
+                    connections.forEach(c => {
+                        if (c !== conn) {
+                            c.send(data);
+                        }
+                    });
+                }
+            } 
+            else if (data.type === 'PEER_LIST_UPDATE') {
+                // Guests receive updated peer list from host
+                peerUsernames = data.peers;
+                renderPeers();
+            }
+        }
+
+        function broadcastPeerList() {
+            // Include host in map
+            const allPeers = { ...peerUsernames };
+            allPeers[peer.id] = currentUser;
+
+            connections.forEach(c => {
+                c.send({
+                    type: 'PEER_LIST_UPDATE',
+                    peers: allPeers
+                });
+            });
+        }
+
+        function enterChatUI() {
             document.getElementById('landing-view').classList.add('hidden');
             document.getElementById('chat-view').classList.remove('hidden');
             document.getElementById('header-user-info').classList.remove('hidden');
             document.getElementById('header-user-info').classList.add('flex');
             document.getElementById('current-username-display').textContent = currentUser;
-            document.getElementById('sidebar-room-name').innerHTML = `<i class="fa-solid fa-hashtag text-fufa-500"></i> ${currentRoom}`;
-            document.getElementById('mobile-room-title').textContent = `# ${currentRoom}`;
+            document.getElementById('sidebar-room-code').textContent = currentRoomCode;
+            document.getElementById('mobile-room-code').textContent = currentRoomCode;
 
-            initializeRoomSession();
+            messages = [{
+                user: 'System',
+                text: `Connected to P2P mesh room #${currentRoomCode}. Messages are sent directly browser-to-browser!`,
+                time: getCurrentTime(),
+                system: true
+            }];
+
+            renderMessages();
+            renderPeers();
         }
 
         function leaveRoom() {
-            if (simulationInterval) clearInterval(simulationInterval);
+            if (peer) {
+                try { peer.destroy(); } catch(e){}
+            }
+            connections = [];
+            peerUsernames = {};
+            messages = [];
+
             document.getElementById('chat-view').classList.add('hidden');
             document.getElementById('header-user-info').classList.add('hidden');
             document.getElementById('header-user-info').classList.remove('flex');
             document.getElementById('landing-view').classList.remove('hidden');
-            messages = [];
-            showToast('You have left the chat room.');
+            document.getElementById('connection-status-dot').className = 'w-2.5 h-2.5 rounded-full bg-amber-500';
+            showToast('Disconnected from room.');
         }
 
         function returnToLanding() {
             leaveRoom();
         }
 
-        // Initialize Chat Room Session & Mock Peers
-        function initializeRoomSession() {
-            messages = [
-                { id: 1, user: 'System', text: `Welcome to #${currentRoom}! You are connected anonymously. Be nice and enjoy chatting.`, time: getCurrentTime(), system: true },
-                { id: 2, user: 'CosmicGhost42', text: 'Hey everyone! Anyone tuning in from tech?', time: getCurrentTime() },
-                { id: 3, user: 'CyberViper99', text: 'Yeah! Building a cool real-time app right now on fufa.com 🚀', time: getCurrentTime() }
-            ];
-
-            activePeers = [
-                { name: 'CosmicGhost42', status: 'Active now' },
-                { name: 'CyberViper99', status: 'Typing...' },
-                { name: 'NeonPhantom7', status: 'Active 2m ago' },
-                { name: 'AstralDrifter', status: 'Active now' }
-            ];
-
-            renderMessages();
-            renderPeers();
-
-            // Start live peer simulation ticker
-            if (simulationInterval) clearInterval(simulationInterval);
-            simulationInterval = setInterval(() => {
-                triggerSimulatedPeerMessage();
-            }, 12000);
-        }
-
         function getCurrentTime() {
             const now = new Date();
             return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function addSystemMessage(text) {
+            messages.push({
+                user: 'System',
+                text: text,
+                time: getCurrentTime(),
+                system: true
+            });
+            renderMessages();
         }
 
         function renderMessages() {
@@ -475,7 +529,7 @@
                     msgEl.className = 'flex justify-center my-2';
                     msgEl.innerHTML = `
                         <div class="bg-fufa-card/60 border border-fufa-border px-4 py-2 rounded-xl text-xs text-gray-400 text-center max-w-md">
-                            <i class="fa-solid fa-circle-info text-fufa-500 mr-1.5"></i> ${msg.text}
+                            <i class="fa-solid fa-circle-info text-fufa-500 mr-1.5"></i> ${escapeHtml(msg.text)}
                         </div>
                     `;
                 } else if (isMe) {
@@ -510,29 +564,34 @@
         function renderPeers() {
             const listEl = document.getElementById('online-users-list');
             listEl.innerHTML = '';
-            document.getElementById('peer-count-badge').textContent = activePeers.length + 1;
 
-            // Render myself first
+            // Count total peers + self
+            const peerIds = Object.keys(peerUsernames);
+            document.getElementById('peer-count-badge').textContent = peerIds.length + 1;
+
+            // Render myself
             const meDiv = document.createElement('div');
             meDiv.className = 'flex items-center justify-between p-2 rounded-xl bg-fufa-border/30 border border-fufa-border/50 text-xs';
             meDiv.innerHTML = `
                 <div class="flex items-center space-x-2 truncate">
                     <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-                    <span class="font-bold text-white truncate">${currentUser} <span class="text-[10px] text-fufa-400">(You)</span></span>
+                    <span class="font-bold text-white truncate">${escapeHtml(currentUser)} <span class="text-[10px] text-fufa-400">(${isHost ? 'Host' : 'Peer'})</span></span>
                 </div>
-                <span class="text-[10px] text-emerald-400 font-medium">Online</span>
+                <span class="text-[10px] text-emerald-400 font-medium">Connected</span>
             `;
             listEl.appendChild(meDiv);
 
-            activePeers.forEach(peer => {
+            // Render other peers
+            peerIds.forEach(id => {
+                const name = peerUsernames[id];
                 const peerDiv = document.createElement('div');
                 peerDiv.className = 'flex items-center justify-between p-2 rounded-xl hover:bg-fufa-border/20 transition text-xs';
                 peerDiv.innerHTML = `
                     <div class="flex items-center space-x-2 truncate">
-                        <span class="w-2 h-2 rounded-full bg-gray-500"></span>
-                        <span class="text-gray-300 truncate">${escapeHtml(peer.name)}</span>
+                        <span class="w-2 h-2 rounded-full bg-fufa-500"></span>
+                        <span class="text-gray-300 truncate">${escapeHtml(name)}</span>
                     </div>
-                    <span class="text-[10px] text-gray-500">${peer.status}</span>
+                    <span class="text-[10px] text-gray-400">P2P Peer</span>
                 `;
                 listEl.appendChild(peerDiv);
             });
@@ -544,71 +603,34 @@
             const text = input.value.trim();
             if (!text) return;
 
-            messages.push({
-                id: Date.now(),
-                user: currentUser,
+            const messagePacket = {
+                type: 'CHAT_MESSAGE',
+                username: currentUser,
                 text: text,
                 time: getCurrentTime()
-            });
+            };
 
-            input.value = '';
-            renderMessages();
-
-            // Simulate someone replying shortly after
-            setTimeout(() => {
-                showTypingIndicator();
-            }, 1000);
-        }
-
-        function showTypingIndicator() {
-            const indicator = document.getElementById('typing-indicator');
-            const typingText = document.getElementById('typing-text');
-            const randomPeer = activePeers[Math.floor(Math.random() * activePeers.length)].name;
-            typingText.textContent = `${randomPeer} is typing...`;
-            indicator.classList.remove('hidden');
-
-            setTimeout(() => {
-                indicator.classList.add('hidden');
-                // Auto trigger a peer message response
-                messages.push({
-                    id: Date.now(),
-                    user: randomPeer,
-                    text: getRandomPeerReply(),
-                    time: getCurrentTime()
-                });
-                renderMessages();
-            }, 3000);
-        }
-
-        function triggerSimulatedPeerMessage() {
-            if (Math.random() > 0.6) return; // sometimes skip
-            const randomPeer = activePeers[Math.floor(Math.random() * activePeers.length)].name;
+            // Add to local chat view
             messages.push({
-                id: Date.now(),
-                user: randomPeer,
-                text: getRandomPeerReply(),
-                time: getCurrentTime()
+                user: currentUser,
+                text: text,
+                time: messagePacket.time
             });
             renderMessages();
+            input.value = '';
+
+            // Send to all connected peers
+            connections.forEach(conn => {
+                try {
+                    conn.send(messagePacket);
+                } catch(err) {
+                    console.error("Failed to send packet to peer", err);
+                }
+            });
         }
 
-        function getRandomPeerReply() {
-            const replies = [
-                "That's super interesting!",
-                "Has anyone tried the new update yet?",
-                "Totally agree with that.",
-                "fufa.com is such a clean concept, zero hassle.",
-                "Any recommendations for good music?",
-                "Coding late into the night is a vibe ☕",
-                "Greetings from across the globe!"
-            ];
-            return replies[Math.floor(Math.random() * replies.length)];
-        }
-
-        // Emoji picker toggle & insertion
         function toggleEmojiPicker() {
-            const picker = document.getElementById('emoji-picker');
-            picker.classList.toggle('hidden');
+            document.getElementById('emoji-picker').classList.toggle('hidden');
         }
 
         function insertEmoji(emoji) {
@@ -618,51 +640,19 @@
             document.getElementById('emoji-picker').classList.add('hidden');
         }
 
-        function triggerMediaMock() {
-            const input = document.getElementById('message-input');
-            input.value = "📸 [Shared Image Preview: https://placehold.co/400x250/2a224a/8b5cf6?text=Shared+Media]";
-            input.focus();
-            showToast('Media preview attached to input.');
-        }
-
-        function clearChatScreen() {
-            messages = [
-                { id: Date.now(), user: 'System', text: 'Chat history cleared locally.', time: getCurrentTime(), system: true }
-            ];
-            renderMessages();
-            showToast('Local chat history cleared.');
-        }
-
-        // Switch Room Modal Controls
-        function openSwitchRoomModal() {
-            document.getElementById('switch-room-modal').classList.remove('hidden');
-        }
-
-        function closeSwitchRoomModal() {
-            document.getElementById('switch-room-modal').classList.add('hidden');
-        }
-
-        function switchActiveRoom(roomName) {
-            currentRoom = roomName;
-            closeSwitchRoomModal();
-            document.getElementById('sidebar-room-name').innerHTML = `<i class="fa-solid fa-hashtag text-fufa-500"></i> ${currentRoom}`;
-            document.getElementById('mobile-room-title').textContent = `# ${currentRoom}`;
-            initializeRoomSession();
-            showToast(`Switched to room: #${currentRoom}`);
-        }
-
-        function switchCustomRoomModal() {
-            const code = document.getElementById('modal-custom-room').value.trim();
-            if (!code) {
-                showToast('Please enter a secret room code', 'error');
-                return;
+        function copyRoomCode() {
+            const code = currentRoomCode;
+            const textarea = document.createElement('textarea');
+            textarea.value = code;
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                showToast(`Room code ${code} copied to clipboard!`);
+            } catch (err) {
+                showToast('Failed to copy code', 'error');
             }
-            currentRoom = `Custom: ${code}`;
-            closeSwitchRoomModal();
-            document.getElementById('sidebar-room-name').innerHTML = `<i class="fa-solid fa-hashtag text-fufa-500"></i> ${currentRoom}`;
-            document.getElementById('mobile-room-title').textContent = `# ${currentRoom}`;
-            initializeRoomSession();
-            showToast(`Joined secret room: #${currentRoom}`);
+            document.body.removeChild(textarea);
         }
 
         function escapeHtml(text) {
